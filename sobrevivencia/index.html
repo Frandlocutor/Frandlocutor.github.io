@@ -181,6 +181,11 @@ body:not(.trancado) #porta{display:none}
 .add-form input{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
 .del{border:0;background:none;color:var(--muted);font-size:.8rem;text-decoration:underline;padding:0}
 @media (max-width:560px){.people4{grid-template-columns:1fr}}
+.kits{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:-6px}
+.kitb{display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid rgba(239,230,210,.3);background:rgba(255,255,255,.04);color:var(--creme);border-radius:14px;padding:12px 6px;font-weight:700;font-size:1rem}
+.kitb span{font-size:1.4rem;line-height:1}
+.kitb[aria-pressed="true"]{background:var(--creme);border-color:var(--creme);color:var(--mata)}
+.hero h1{font-size:clamp(1.45rem,5vw,2.1rem)}
 </style>
 </head>
 <body class="trancado">
@@ -208,8 +213,12 @@ body:not(.trancado) #porta{display:none}
   </header>
 
   <section class="hero">
-    <h1>Calculadora de estoque de <em>sobrevivência</em></h1>
-    <p class="lead">Monte o kit (mochila de emergência) da sua família. A Defesa Civil orienta ter o kit pronto para se virar sozinho por pelo menos 3 dias.</p>
+    <div class="kits" role="group" aria-label="Escolha o kit">
+      <button class="kitb" type="button" data-kit="casa" aria-pressed="true"><span aria-hidden="true">🏠</span>Ficar em casa</button>
+      <button class="kitb" type="button" data-kit="evac" aria-pressed="false"><span aria-hidden="true">🎒</span>Evacuação rápida</button>
+    </div>
+    <h1>Calculadora de estoque de sobrevivência – <em id="kit-nome">ficando em casa</em></h1>
+    <p class="lead" id="kit-lead"></p>
 
     <div class="block">
       <div class="stepn"><i>1</i>Quem vai usar o kit?</div>
@@ -227,12 +236,7 @@ body:not(.trancado) #porta{display:none}
 
     <div class="block">
       <div class="stepn"><i>2</i>Para quantos dias?</div>
-      <div class="chips">
-        <button class="chip" type="button" data-days="3">3 dias</button>
-        <button class="chip" type="button" data-days="5">5 dias</button>
-        <button class="chip" type="button" data-days="7">7 dias</button>
-        <button class="chip" type="button" data-days="15">15 dias</button>
-      </div>
+      <div class="chips" id="chips"></div>
     </div>
 
     <div class="water"><div><b id="w-l">0 L</b></div><span id="w-t"></span></div>
@@ -259,7 +263,7 @@ body:not(.trancado) #porta{display:none}
   <section class="finish">
     <button class="cta" id="pdf" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 16l-5.7-5.7 1.4-1.4L11 12.2zM4 18h16v3H4z"/></svg>Baixar a lista em PDF</button>
     <div id="msg" role="status"></div>
-    <button class="link" id="reset" type="button">Começar de novo</button>
+    <button class="link" id="reset" type="button">Começar este kit de novo</button>
   </section>
 
   <a class="canal" data-canal target="_blank" rel="noopener">
@@ -270,7 +274,7 @@ body:not(.trancado) #porta{display:none}
 
   <details>
     <summary>De onde vem esta lista</summary>
-    <p>Os itens seguem a orientação da Defesa Civil (Defesa Civil Nacional e <a href="https://www.defesacivil.pr.gov.br/">Defesa Civil do Paraná</a>) para o kit de emergência de 72 horas: água, alimentos que não precisam de cozimento nem geladeira, primeiros socorros e remédios, documentos, dinheiro, iluminação, comunicação, roupas, higiene e ferramentas.</p>
+    <p>Os itens seguem a orientação da Defesa Civil (Defesa Civil Nacional e <a href="https://www.defesacivil.pr.gov.br/">Defesa Civil do Paraná</a>) para o kit de emergência: água, alimentos, primeiros socorros e remédios, documentos, dinheiro, iluminação, comunicação, roupas, higiene e ferramentas. O kit "ficando em casa" é para passar vários dias sem sair; o kit "evacuação rápida" é a mochila para sair em minutos, com o que dá para carregar por até 3 dias (72 horas). Os dois kits guardam as marcações separadas.</p>
     <p>A água segue a referência de 2 litros por pessoa por dia. As outras quantidades são médias aproximadas, e os preços são valores aproximados de novembro de 2026. Os preços mudam de um lugar para outro: toque em "Mudar" para colocar o que você paga. Roupas, agasalho e calçado começam sem preço, porque quase todo mundo já tem.</p>
     <ul>
       <li>Troque a água e confira a validade dos alimentos e remédios a cada 6 meses.</li>
@@ -334,7 +338,7 @@ body:not(.trancado) #porta{display:none}
     });
   });
 
-  // ---------- calculadora do kit ----------
+  // ---------- calculadora: dois kits ----------
   var CATS=[
     {key:"agua",title:"Água"},
     {key:"comida",title:"Comida e utensílios"},
@@ -349,78 +353,139 @@ body:not(.trancado) #porta{display:none}
     {key:"extra",title:"Outros itens"}
   ];
   function ce(x){return Math.ceil(x-1e-9);}
-  // k = regra da quantidade; n = número da regra (pode ser mudado); p = preço por unidade (por kg quando u = "g").
-  // Regras: pd = n por pessoa por dia; bd = n por bebê por dia; nd = n por animal por dia; wd = n por mulher por dia;
-  // pp = n por pessoa; pb = n por pessoa, contando bebês; b = n por bebê; a = n por animal; ad = n por adulto;
-  // fam = n para a família; ev = 1 para cada pessoa a cada n dias; evb = 1 por bebê a cada n dias; evf = 1 para a família a cada n dias;
-  // tr = n trocas por pessoa por dia, até 5 dias; txt = sem conta (só valor em R$).
-  var ITEMS=[
-    {id:"agua",cat:"agua",e:"💧",name:"Água potável",u:["litro","litros"],k:"pd",n:2,p:2.40,extra:"aguabebe"},
-    {id:"barra",cat:"comida",e:"🍫",name:"Barras de cereais",u:["barra","barras"],k:"pd",n:2,p:2.00},
-    {id:"biscoito",cat:"comida",e:"🍪",name:"Biscoitos",u:["pacote","pacotes"],k:"ev",n:2,p:4.50},
-    {id:"frutas",cat:"comida",e:"🍇",name:"Frutas secas",u:"g",k:"pd",n:50,p:60.00,det:"uva-passa, banana-passa, castanhas"},
-    {id:"lata",cat:"comida",e:"🥫",name:"Enlatados prontos para comer",u:["lata","latas"],k:"pd",n:1,p:7.00,det:"atum, sardinha, salsicha, milho, feijoada pronta"},
-    {id:"abridor",cat:"comida",e:"🔧",name:"Abridor de lata manual",u:["unidade","unidades"],k:"fam",n:1,p:15.00},
-    {id:"utens",cat:"comida",e:"🍽️",name:"Prato, copo e talheres",u:["jogo","jogos"],k:"pp",n:1,p:20.00},
-    {id:"toalha",cat:"comida",e:"🧻",name:"Papel toalha",u:["rolo","rolos"],k:"evf",n:3,p:4.00},
-    {id:"socorros",cat:"saude",e:"⛑️",name:"Kit de primeiros socorros",u:["kit","kits"],k:"fam",n:1,p:60.00,det:"gaze, ataduras, antisséptico, álcool, luvas descartáveis, tesoura e remédio para dor, febre e alergia"},
-    {id:"remedio",cat:"saude",e:"💊",name:"Remédios de uso contínuo",k:"txt",t:function(s){return "para "+s.D+" dias";},p:0,det:"de quem toma remédio todo dia, com cópia da receita médica"},
-    {id:"oculos",cat:"saude",e:"👓",name:"Óculos de grau extra",k:"txt",t:function(){return "1 para quem usa";},p:0,det:"um par reserva para cada pessoa que usa óculos"},
-    {id:"repelente",cat:"saude",e:"🦟",name:"Repelente",u:["frasco","frascos"],k:"ev",n:20,p:25.00},
-    {id:"mascara",cat:"saude",e:"😷",name:"Máscaras de proteção",u:["máscara","máscaras"],k:"pd",n:1,p:1.00},
-    {id:"docs",cat:"docs",e:"📄",name:"Cópias de documentos",u:["envelope","envelopes"],k:"fam",n:1,p:10.00,det:"documentos de todos, cartão de vacina e contatos de emergência (199 Defesa Civil, 193 Bombeiros), em saco plástico fechado"},
-    {id:"dinheiro",cat:"docs",e:"💵",name:"Dinheiro em espécie",k:"txt",t:function(){return "notas e moedas";},p:0,det:"de vários valores: sem luz, cartão e Pix podem não funcionar"},
-    {id:"lanterna",cat:"luz",e:"🔦",name:"Lanterna",u:["lanterna","lanternas"],k:"ad",n:1,p:30.00},
-    {id:"pilhas",cat:"luz",e:"🔋",name:"Pilhas extras",u:["pilha","pilhas"],k:"ad",n:6,p:3.00,det:"para lanterna e rádio, guardadas fora dos aparelhos"},
-    {id:"powerbank",cat:"luz",e:"🔌",name:"Carregador portátil (power bank)",u:["unidade","unidades"],k:"ad",n:1,p:80.00,det:"sempre carregado, com o cabo do celular"},
-    {id:"radio",cat:"luz",e:"📻",name:"Rádio a pilhas",u:["unidade","unidades"],k:"fam",n:1,p:70.00,det:"para ouvir os alertas oficiais"},
-    {id:"apito",cat:"luz",e:"📯",name:"Apito",u:["apito","apitos"],k:"pp",n:1,p:8.00,det:"para pedir socorro"},
-    {id:"mapa",cat:"luz",e:"🗺️",name:"Mapa da sua região",u:["mapa","mapas"],k:"fam",n:1,p:10.00,det:"em papel, com o caminho até abrigos e pontos de encontro"},
-    {id:"troca",cat:"roupa",e:"👕",name:"Trocas de roupa confortável",u:["troca","trocas"],k:"tr",n:1,p:0,det:"até 5 trocas (depois dá para lavar)"},
-    {id:"agasalho",cat:"roupa",e:"🧥",name:"Agasalho para o frio",u:["agasalho","agasalhos"],k:"pb",n:1,p:0},
-    {id:"capa",cat:"roupa",e:"🌧️",name:"Capa de chuva",u:["capa","capas"],k:"pp",n:1,p:20.00},
-    {id:"calcado",cat:"roupa",e:"🥾",name:"Calçado resistente",u:["par","pares"],k:"pp",n:1,p:0,det:"fechado e firme"},
-    {id:"cobertor",cat:"roupa",e:"🛏️",name:"Cobertor ou manta térmica",u:["unidade","unidades"],k:"pb",n:1,p:15.00},
-    {id:"escova",cat:"higiene",e:"🪥",name:"Escova de dente",u:["escova","escovas"],k:"pp",n:1,p:5.00},
-    {id:"pasta",cat:"higiene",e:"🦷",name:"Pasta de dente",u:["tubo","tubos"],k:"ev",n:30,p:4.00},
-    {id:"sabonete",cat:"higiene",e:"🧼",name:"Sabonete",u:["barra","barras"],k:"ev",n:10,p:2.50},
-    {id:"papel",cat:"higiene",e:"🧻",name:"Papel higiênico",u:["rolo","rolos"],k:"ev",n:3,p:1.50},
-    {id:"absorvente",cat:"higiene",e:"🩸",name:"Absorventes",u:["unidade","unidades"],k:"wd",n:5,p:0.60},
-    {id:"sacola",cat:"higiene",e:"🛍️",name:"Sacolas plásticas",u:["sacola","sacolas"],k:"pb",n:3,p:0.25,det:"para roupa molhada, lixo e documentos"},
-    {id:"lixo",cat:"higiene",e:"🗑️",name:"Sacos de lixo",u:["saco","sacos"],k:"pd",n:0.5,p:0.50,det:"também servem de capa de chuva e forro improvisado"},
-    {id:"canivete",cat:"ferr",e:"🔪",name:"Canivete",u:["unidade","unidades"],k:"fam",n:1,p:40.00,det:"de preferência multiuso"},
-    {id:"fogo",cat:"ferr",e:"🔥",name:"Fósforos ou isqueiro",u:["unidade","unidades"],k:"fam",n:2,p:5.00,det:"guardados em saco plástico, longe da umidade"},
-    {id:"fralda",cat:"bebe",e:"👶",name:"Fraldas",u:["fralda","fraldas"],k:"bd",n:7,p:1.20},
-    {id:"leite",cat:"bebe",e:"🍼",name:"Leite ou fórmula do bebê",u:"g",k:"bd",n:150,p:80.00,det:"siga o que o bebê já toma"},
-    {id:"mamadeira",cat:"bebe",e:"🍼",name:"Mamadeiras",u:["mamadeira","mamadeiras"],k:"b",n:2,p:25.00},
-    {id:"lenco",cat:"bebe",e:"🧴",name:"Lenços umedecidos",u:["pacote","pacotes"],k:"evb",n:3,p:10.00},
-    {id:"racao",cat:"pet",e:"🦴",name:"Ração",u:"g",k:"nd",n:300,p:15.00,det:"pensado para um cão médio; ajuste ao seu animal"},
-    {id:"aguapet",cat:"pet",e:"💧",name:"Água para os animais",u:["litro","litros"],k:"nd",n:1,p:2.40},
-    {id:"guia",cat:"pet",e:"🐕",name:"Guia ou caixa de transporte",u:["unidade","unidades"],k:"a",n:1,p:40.00},
-    {id:"vasilha",cat:"pet",e:"🥣",name:"Vasilhas",u:["vasilha","vasilhas"],k:"a",n:2,p:10.00,det:"uma para comida e outra para água"}
-  ];
-  var KEY="kit-sobrevivencia-v1";
-  function fresh(){return {adults:2,kids:2,babies:0,pets:0,days:3,women:null,have:{},ov:{},custom:[]};}
+  // k = regra; n = número da regra (pode ser mudado); p = preço por unidade (por kg se u="g", por litro se u="ml").
+  // pd por pessoa/dia; bd por bebê/dia; nd por animal/dia; wd por mulher/dia; fd para a família por dia;
+  // pp por pessoa; pb por pessoa contando bebês; b por bebê; a por animal; ad por adulto; fam para a família;
+  // ev 1 por pessoa a cada n dias; evb 1 por bebê a cada n dias; evf 1 para a família a cada n dias; tr trocas por pessoa/dia (até 5 dias); txt sem conta.
+  var COMUM={
+    socorros:{cat:"saude",e:"⛑️",name:"Kit de primeiros socorros",u:["kit","kits"],k:"fam",n:1,p:60.00,det:"gaze, ataduras, antisséptico, álcool, luvas descartáveis, tesoura e remédio para dor, febre e alergia"},
+    remedio:{cat:"saude",e:"💊",name:"Remédios de uso contínuo",k:"txt",t:function(s){return "para "+s.D+(s.D===1?" dia":" dias");},p:0,det:"de quem toma remédio todo dia, com cópia da receita médica"},
+    oculos:{cat:"saude",e:"👓",name:"Óculos de grau extra",k:"txt",t:function(){return "1 para quem usa";},p:0,det:"um par reserva para cada pessoa que usa óculos"},
+    mascara:{cat:"saude",e:"😷",name:"Máscaras de proteção",u:["máscara","máscaras"],k:"pd",n:1,p:1.00},
+    docs:{cat:"docs",e:"📄",name:"Cópias de documentos",u:["envelope","envelopes"],k:"fam",n:1,p:10.00,det:"documentos de todos, cartão de vacina e contatos de emergência (199 Defesa Civil, 193 Bombeiros), em saco plástico fechado"},
+    dinheiro:{cat:"docs",e:"💵",name:"Dinheiro em espécie",k:"txt",t:function(){return "notas e moedas";},p:0,det:"de vários valores: sem luz, cartão e Pix podem não funcionar"},
+    lanterna:{cat:"luz",e:"🔦",name:"Lanterna",u:["lanterna","lanternas"],k:"ad",n:1,p:30.00},
+    pilhas:{cat:"luz",e:"🔋",name:"Pilhas extras",u:["pilha","pilhas"],k:"ad",n:6,p:3.00,det:"para lanterna e rádio, guardadas fora dos aparelhos"},
+    powerbank:{cat:"luz",e:"🔌",name:"Carregador portátil (power bank)",u:["unidade","unidades"],k:"ad",n:1,p:80.00,det:"sempre carregado, com o cabo do celular"},
+    radio:{cat:"luz",e:"📻",name:"Rádio a pilhas",u:["unidade","unidades"],k:"fam",n:1,p:70.00,det:"para ouvir os alertas oficiais"},
+    escova:{cat:"higiene",e:"🪥",name:"Escova de dente",u:["escova","escovas"],k:"pp",n:1,p:5.00},
+    pasta:{cat:"higiene",e:"🦷",name:"Pasta de dente",u:["tubo","tubos"],k:"ev",n:30,p:4.00},
+    sabonete:{cat:"higiene",e:"🧼",name:"Sabonete",u:["barra","barras"],k:"ev",n:10,p:2.50},
+    papel:{cat:"higiene",e:"🧻",name:"Papel higiênico",u:["rolo","rolos"],k:"ev",n:3,p:1.50},
+    absorvente:{cat:"higiene",e:"🩸",name:"Absorventes",u:["unidade","unidades"],k:"wd",n:5,p:0.60},
+    lixo:{cat:"higiene",e:"🗑️",name:"Sacos de lixo",u:["saco","sacos"],k:"pd",n:0.5,p:0.50},
+    fogo:{cat:"ferr",e:"🔥",name:"Fósforos ou isqueiro",u:["unidade","unidades"],k:"fam",n:2,p:5.00,det:"guardados em saco plástico, longe da umidade"},
+    fralda:{cat:"bebe",e:"👶",name:"Fraldas",u:["fralda","fraldas"],k:"bd",n:7,p:1.20},
+    leite:{cat:"bebe",e:"🍼",name:"Leite ou fórmula do bebê",u:"g",k:"bd",n:150,p:80.00,det:"siga o que o bebê já toma"},
+    mamadeira:{cat:"bebe",e:"🍼",name:"Mamadeiras",u:["mamadeira","mamadeiras"],k:"b",n:2,p:25.00},
+    lenco:{cat:"bebe",e:"🧴",name:"Lenços umedecidos",u:["pacote","pacotes"],k:"evb",n:3,p:10.00},
+    racao:{cat:"pet",e:"🦴",name:"Ração",u:"g",k:"nd",n:300,p:15.00,det:"pensado para um cão médio; ajuste ao seu animal"},
+    aguapet:{cat:"pet",e:"💧",name:"Água para os animais",u:["litro","litros"],k:"nd",n:1,p:2.40},
+    vasilha:{cat:"pet",e:"🥣",name:"Vasilhas",u:["vasilha","vasilhas"],k:"a",n:2,p:10.00,det:"uma para comida e outra para água"}
+  };
+  function C(id,mod){var o={id:id},b=COMUM[id];for(var k in b)o[k]=b[k];if(mod)for(var m in mod)o[m]=mod[m];return o;}
+  var KITS={
+    casa:{
+      nome:"ficando em casa",curto:"Ficar em casa",icone:"🏠",
+      lead:"Para atravessar dias sem luz, sem água da rua ou sem poder sair (enchente, tempestade, apagão), sem precisar ir ao mercado.",
+      dias:[3,7,15,30],padrao:7,
+      items:[
+        {id:"agua",cat:"agua",e:"💧",name:"Água para beber",u:["litro","litros"],k:"pd",n:2,p:2.40,agua:1,bebe:1},
+        {id:"aguauso",cat:"agua",e:"🚿",name:"Água para cozinhar e higiene",u:["litro","litros"],k:"pd",n:2,p:2.40,agua:1,det:"pode ser guardada em galões ou baldes tampados"},
+        {id:"sanit",cat:"agua",e:"🧪",name:"Água sanitária",u:["frasco","frascos"],k:"fam",n:1,p:3.00,det:"2 gotas por litro e esperar 30 minutos para tratar água de beber (sem perfume)"},
+        {id:"arroz",cat:"comida",e:"🍚",name:"Arroz",u:"g",k:"pd",n:100,p:6.00},
+        {id:"feijao",cat:"comida",e:"🫘",name:"Feijão",u:"g",k:"pd",n:60,p:8.50},
+        {id:"macarrao",cat:"comida",e:"🍝",name:"Macarrão",u:"g",k:"pd",n:40,p:9.00},
+        {id:"lata",cat:"comida",e:"🥫",name:"Enlatados",u:["lata","latas"],k:"pd",n:1,p:7.00,det:"sardinha, atum, salsicha, milho, ervilha, feijoada pronta"},
+        {id:"leitepo",cat:"comida",e:"🥛",name:"Leite em pó",u:"g",k:"pd",n:30,p:50.00},
+        {id:"oleo",cat:"comida",e:"🫒",name:"Óleo",u:"ml",k:"pd",n:20,p:8.00},
+        {id:"sal",cat:"comida",e:"🧂",name:"Sal",u:"g",k:"pd",n:5,p:3.00},
+        {id:"acucar",cat:"comida",e:"🍬",name:"Açúcar",u:"g",k:"pd",n:40,p:4.00},
+        {id:"cafe",cat:"comida",e:"☕",name:"Café",u:"g",k:"pd",n:15,p:60.00},
+        {id:"biscoito",cat:"comida",e:"🍪",name:"Biscoitos",u:["pacote","pacotes"],k:"ev",n:2,p:4.50},
+        {id:"abridor",cat:"comida",e:"🔧",name:"Abridor de lata manual",u:["unidade","unidades"],k:"fam",n:1,p:15.00},
+        {id:"fogareiro",cat:"comida",e:"🍳",name:"Fogareiro de camping",u:["unidade","unidades"],k:"fam",n:1,p:120.00,det:"para cozinhar se faltar gás ou luz; use em lugar arejado"},
+        {id:"cartucho",cat:"comida",e:"🧯",name:"Cartuchos de gás do fogareiro",u:["cartucho","cartuchos"],k:"evf",n:2,p:12.00},
+        C("socorros"),C("remedio"),C("oculos"),
+        {id:"alcool",cat:"saude",e:"🧴",name:"Álcool em gel",u:["frasco","frascos"],k:"evf",n:15,p:8.00},
+        C("docs"),C("dinheiro"),
+        C("lanterna"),C("pilhas"),C("powerbank"),C("radio"),
+        {id:"vela",cat:"luz",e:"🕯️",name:"Velas",u:["vela","velas"],k:"fd",n:2,p:1.50,det:"nunca deixe acesa sem ninguém olhando"},
+        C("escova"),C("pasta"),C("sabonete"),C("papel"),C("absorvente"),C("lixo",{det:"para o lixo e para o banheiro se faltar água"}),
+        {id:"balde",cat:"higiene",e:"🪣",name:"Balde com tampa",u:["balde","baldes"],k:"fam",n:1,p:25.00,det:"para guardar água ou servir de banheiro de emergência"},
+        {id:"deterg",cat:"higiene",e:"🍽️",name:"Detergente",u:["frasco","frascos"],k:"evf",n:15,p:3.00},
+        C("fogo"),
+        {id:"fita",cat:"ferr",e:"🩹",name:"Fita adesiva larga",u:["rolo","rolos"],k:"fam",n:1,p:12.00,det:"para vedar janelas, portas e consertos"},
+        C("fralda"),C("leite"),C("mamadeira"),C("lenco"),
+        C("racao"),C("aguapet"),C("vasilha")
+      ]
+    },
+    evac:{
+      nome:"evacuação rápida",curto:"Evacuação rápida",icone:"🎒",
+      lead:"A mochila de emergência para sair de casa em minutos, quando a Defesa Civil manda evacuar. Cada pessoa leva a sua.",
+      dias:[1,2,3],padrao:3,
+      items:[
+        {id:"mochila",cat:"roupa",e:"🎒",name:"Mochila",u:["mochila","mochilas"],k:"pp",n:1,p:120.00,det:"uma por pessoa, que ela consiga carregar"},
+        {id:"agua",cat:"agua",e:"💧",name:"Água potável",u:["litro","litros"],k:"pd",n:2,p:2.40,agua:1,bebe:1,det:"em garrafas fáceis de carregar"},
+        {id:"pastilha",cat:"agua",e:"💊",name:"Pastilhas para purificar água",u:["pastilha","pastilhas"],k:"pd",n:2,p:0.50,det:"cada uma trata 1 litro de água"},
+        {id:"barra",cat:"comida",e:"🍫",name:"Barras de cereais",u:["barra","barras"],k:"pd",n:2,p:2.00},
+        {id:"biscoito",cat:"comida",e:"🍪",name:"Biscoitos",u:["pacote","pacotes"],k:"ev",n:2,p:4.50},
+        {id:"frutas",cat:"comida",e:"🍇",name:"Frutas secas",u:"g",k:"pd",n:50,p:60.00,det:"uva-passa, banana-passa, castanhas"},
+        {id:"lata",cat:"comida",e:"🥫",name:"Enlatados prontos para comer",u:["lata","latas"],k:"pd",n:1,p:7.00,det:"de preferência com abre-fácil: atum, sardinha, salsicha"},
+        {id:"abridor",cat:"comida",e:"🔧",name:"Abridor de lata manual",u:["unidade","unidades"],k:"fam",n:1,p:15.00},
+        {id:"utens",cat:"comida",e:"🍽️",name:"Copo, prato e talheres",u:["jogo","jogos"],k:"pp",n:1,p:20.00,det:"leves, de plástico ou alumínio"},
+        C("socorros",{det:"pequeno, para levar na mochila: gaze, ataduras, antisséptico, luvas, tesoura e remédio para dor, febre e alergia"}),
+        C("remedio"),C("oculos"),C("mascara"),
+        {id:"repelente",cat:"saude",e:"🦟",name:"Repelente",u:["frasco","frascos"],k:"ev",n:20,p:25.00},
+        C("docs"),C("dinheiro"),
+        C("lanterna"),C("pilhas"),C("powerbank"),C("radio"),
+        {id:"apito",cat:"luz",e:"📯",name:"Apito",u:["apito","apitos"],k:"pp",n:1,p:8.00,det:"para pedir socorro"},
+        {id:"mapa",cat:"luz",e:"🗺️",name:"Mapa da sua região",u:["mapa","mapas"],k:"fam",n:1,p:10.00,det:"em papel, com o caminho até abrigos e pontos de encontro"},
+        {id:"troca",cat:"roupa",e:"👕",name:"Trocas de roupa",u:["troca","trocas"],k:"tr",n:1,p:0,det:"roupa confortável, enrolada em saco plástico"},
+        {id:"agasalho",cat:"roupa",e:"🧥",name:"Agasalho para o frio",u:["agasalho","agasalhos"],k:"pb",n:1,p:0},
+        {id:"capa",cat:"roupa",e:"🌧️",name:"Capa de chuva",u:["capa","capas"],k:"pp",n:1,p:20.00},
+        {id:"calcado",cat:"roupa",e:"🥾",name:"Calçado resistente",u:["par","pares"],k:"pp",n:1,p:0,det:"fechado e firme, de preferência já no pé"},
+        {id:"manta",cat:"roupa",e:"🛏️",name:"Manta térmica",u:["unidade","unidades"],k:"pb",n:1,p:15.00,det:"dobrada ocupa pouco espaço"},
+        C("escova"),C("pasta",{n:60}),C("sabonete",{n:20}),C("papel"),C("absorvente"),
+        {id:"sacola",cat:"higiene",e:"🛍️",name:"Sacolas plásticas",u:["sacola","sacolas"],k:"pb",n:3,p:0.25,det:"para roupa molhada, lixo e documentos"},
+        C("lixo",{n:0.5,det:"também servem de capa de chuva e forro improvisado"}),
+        {id:"canivete",cat:"ferr",e:"🔪",name:"Canivete multiuso",u:["unidade","unidades"],k:"fam",n:1,p:40.00},
+        C("fogo"),
+        {id:"corda",cat:"ferr",e:"🪢",name:"Corda (10 metros)",u:["unidade","unidades"],k:"fam",n:1,p:25.00},
+        C("fralda"),C("leite"),C("mamadeira"),C("lenco"),
+        C("racao"),C("aguapet"),
+        {id:"guia",cat:"pet",e:"🐕",name:"Guia ou caixa de transporte",u:["unidade","unidades"],k:"a",n:1,p:40.00},
+        C("vasilha",{n:1,det:"dobrável, para comida e água"})
+      ]
+    }
+  };
+  var KEY="kit-sobrevivencia-v2";
+  function freshKit(id){return {days:KITS[id].padrao,have:{},ov:{},custom:[]};}
+  function fresh(){return {adults:2,kids:2,babies:0,pets:0,women:null,kit:"casa",kits:{casa:freshKit("casa"),evac:freshKit("evac")}};}
   var state=fresh(),openId=null;
-  try{var sv=JSON.parse(localStorage.getItem(KEY)||"null");if(sv&&typeof sv==="object"){for(var k in state)if(sv[k]!=null)state[k]=sv[k];}}catch(e){}
+  try{var sv=JSON.parse(localStorage.getItem(KEY)||"null");if(sv&&sv.kits){for(var k in state)if(sv[k]!=null)state[k]=sv[k];["casa","evac"].forEach(function(x){if(!state.kits[x])state.kits[x]=freshKit(x);});}}catch(e){}
+  var h0=(location.hash||"").replace("#","");if(h0==="casa"||h0==="evacuacao")state.kit=h0==="casa"?"casa":"evac";
   function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+  function K(){return KITS[state.kit];}
+  function KS(){return state.kits[state.kit];}
 
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function nf(v,d){return v.toLocaleString("pt-BR",{maximumFractionDigits:d,minimumFractionDigits:0});}
   function money(v){return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
   function women(){return state.women==null?ce(state.adults/2):state.women;}
-  function S(){var P=state.adults+state.kids;return {P:P,A:Math.max(1,state.adults),B:state.babies,N:state.pets,D:state.days,W:women()};}
-  function N(it){var o=state.ov[it.id];return o&&o.n!=null?o.n:it.n;}
-  function PR(it){if(it.custom)return it.p||0;var o=state.ov[it.id];return o&&o.p!=null?o.p:it.p;}
+  function S(){var P=state.adults+state.kids;return {P:P,A:Math.max(1,state.adults),B:state.babies,N:state.pets,D:KS().days,W:women()};}
+  function N(it){var o=KS().ov[it.id];return o&&o.n!=null?o.n:it.n;}
+  function PR(it){if(it.custom)return it.p||0;var o=KS().ov[it.id];return o&&o.p!=null?o.p:it.p;}
   function qnum(it,s){
     var n=N(it);
     if(it.custom)return it.q||0;
     switch(it.k){
-      case "pd":return n*s.P*s.D+(it.extra==="aguabebe"?1*s.B*s.D:0);
+      case "pd":return n*s.P*s.D+(it.bebe?1*s.B*s.D:0);
       case "bd":return n*s.B*s.D;
       case "nd":return n*s.N*s.D;
       case "wd":return n*s.W*s.D;
+      case "fd":return n*s.D;
       case "pp":return n*s.P;
       case "pb":return n*(s.P+s.B);
       case "b":return n*s.B;
@@ -434,28 +499,30 @@ body:not(.trancado) #porta{display:none}
     }
     return 0;
   }
-  function rounded(it,s){var v=qnum(it,s);return it.u==="g"?Math.round(v):ce(v);}
+  function metric(it){return it.u==="g"||it.u==="ml";}
+  function rounded(it,s){var v=qnum(it,s);return metric(it)?Math.round(v):ce(v);}
   function amount(it,s){
     if(it.k==="txt")return it.t(s);
     var v=rounded(it,s);
     if(it.custom)return nf(v,1)+(it.un?" "+it.un:"");
     if(it.u==="g")return v>=1000?nf(v/1000,1)+" kg":nf(v,0)+" g";
+    if(it.u==="ml")return v>=1000?nf(v/1000,1)+" L":nf(v,0)+" ml";
     return nf(v,0)+" "+(v===1?it.u[0]:it.u[1]);
   }
   function cost(it,s){
     if(it.k==="txt")return PR(it);
     var v=rounded(it,s);
-    return it.u==="g"?v/1000*PR(it):v*PR(it);
+    return metric(it)?v/1000*PR(it):v*PR(it);
   }
-  function un1(it){return it.u==="g"?"g":it.u[0];}
-  function unN(it){return it.u==="g"?"gramas":it.u[1];}
+  function unN(it){return it.u==="g"?"gramas":it.u==="ml"?"mililitros":it.u[1];}
   function rule(it){
-    var n=N(it),x=nf(n,2)+" "+(it.u==="g"?"g":(n===1?it.u[0]:it.u[1]));
+    var n=N(it),x=nf(n,2)+" "+(it.u==="g"?"g":it.u==="ml"?"ml":(n===1?it.u[0]:it.u[1]));
     switch(it.k){
-      case "pd":return x+" por pessoa por dia"+(it.extra==="aguabebe"&&state.babies?" e 1 L por bebê por dia":"");
+      case "pd":return x+" por pessoa por dia"+(it.bebe&&state.babies?" e 1 L por bebê por dia":"");
       case "bd":return x+" por bebê por dia";
       case "nd":return x+" por animal por dia";
       case "wd":return x+" por dia para cada mulher que menstrua ("+women()+(women()===1?" mulher":" mulheres")+")";
+      case "fd":return x+" por dia para a família";
       case "pp":case "pb":return x+" por pessoa";
       case "b":return x+" por bebê";
       case "a":return x+" por animal";
@@ -463,7 +530,7 @@ body:not(.trancado) #porta{display:none}
       case "fam":return x+" para a família";
       case "ev":return "1 "+it.u[0]+" dura uns "+nf(n,1)+" dias para uma pessoa";
       case "evb":return "1 "+it.u[0]+" por bebê a cada "+nf(n,1)+" dias";
-      case "evf":return "1 "+it.u[0]+" a cada "+nf(n,1)+" dias";
+      case "evf":return "1 "+it.u[0]+" dura uns "+nf(n,1)+" dias para a família";
       case "tr":return x+" por pessoa por dia";
     }
     return "";
@@ -475,6 +542,7 @@ body:not(.trancado) #porta{display:none}
       case "bd":return "Um bebê usa por dia ("+u+")";
       case "nd":return "Um animal usa por dia ("+u+")";
       case "wd":return "Uma mulher usa por dia ("+u+")";
+      case "fd":return "A família usa por dia ("+u+")";
       case "pp":case "pb":return "Quantos por pessoa";
       case "b":return "Quantos por bebê";
       case "a":return "Quantos por animal";
@@ -489,6 +557,7 @@ body:not(.trancado) #porta{display:none}
   function priceLabel(it){
     if(it.k==="txt")return "Quanto vai gastar (R$)";
     if(it.u==="g")return "Preço do quilo (R$)";
+    if(it.u==="ml")return "Preço do litro (R$)";
     return "Preço de 1 "+it.u[0]+" (R$)";
   }
   function galoes(l){if(!l)return "";var g=ce(l/5);return "Dá "+g+(g===1?" galão":" galões")+" de 5 L.";}
@@ -496,18 +565,19 @@ body:not(.trancado) #porta{display:none}
     if(it.custom)return PR(it)?money(PR(it))+" cada":"";
     var r=it.k==="txt"?"":rule(it);
     var d=it.det||"";
-    if(it.id==="agua")d=galoes(rounded(it,s));
+    if(it.agua&&!d)d=galoes(rounded(it,s));
+    if(r&&d)d=d.charAt(0).toUpperCase()+d.slice(1);
     return [r,d].filter(Boolean).join(". ");
   }
   function catOf(k){for(var i=0;i<CATS.length;i++)if(CATS[i].key===k)return CATS[i];return CATS[CATS.length-1];}
   function visible(){
     var s=S(),out=[];
-    ITEMS.forEach(function(it){
+    K().items.forEach(function(it){
       var c=catOf(it.cat);if(c.need&&!state[c.need])return;
       if(it.k!=="txt"&&qnum(it,s)<=0)return;
       out.push(it);
     });
-    state.custom.forEach(function(c){out.push({id:c.id,cat:"extra",e:"📦",name:c.name,q:c.q,un:c.un,p:c.p,custom:true});});
+    KS().custom.forEach(function(c){out.push({id:c.id,cat:"extra",e:"📦",name:c.name,q:c.q,un:c.un,p:c.p,custom:true});});
     return out;
   }
   var CHECK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
@@ -522,14 +592,14 @@ body:not(.trancado) #porta{display:none}
       if(it.k!=="txt")h+=field(it,"n",ruleLabel(it),N(it));
       if(it.k==="wd")h+=field(it,"women","Quantas mulheres menstruam",women());
       h+=field(it,"p",priceLabel(it),PR(it));
-      h+='<div class="note">'+(it.k==="txt"?"Escreva quanto pretende gastar com este item.":"Quantidade e preço são aproximados (preços de novembro de 2026). Se o seu caso é outro, escreva aqui.")+'</div>';
+      h+='<div class="note">'+(it.k==="txt"?"Escreva quanto pretende gastar com este item.":"Quantidade e preço são aproximados. Se o seu caso é outro, escreva aqui.")+'</div>';
     }
     h+='<div class="edit-btns"><button class="btn" type="button" data-close="1">Pronto</button>'+
-      (it.custom?'<button class="btn ghost" type="button" data-del="'+it.id+'">Tirar da lista</button>':(state.ov[it.id]?'<button class="btn ghost" type="button" data-undo="'+it.id+'">Voltar ao original</button>':''))+'</div></div>';
+      (it.custom?'<button class="btn ghost" type="button" data-del="'+it.id+'">Tirar da lista</button>':'<button class="btn ghost" type="button" data-undo="'+it.id+'">Voltar ao original</button>')+'</div></div>';
     return h;
   }
   function card(it,s){
-    var on=!!state.have[it.id];
+    var on=!!KS().have[it.id];
     return '<article class="item'+(on?" done":"")+'" id="card-'+it.id+'"><div class="row">'+
       '<button class="tick" type="button" data-have="'+it.id+'" aria-pressed="'+on+'" aria-label="Já tenho: '+esc(it.name)+'"><span class="em" aria-hidden="true">'+it.e+'</span>'+CHECK+'</button>'+
       '<div><div class="name" id="nm-'+it.id+'">'+esc(it.name||"Item sem nome")+'</div><div class="amt" id="amt-'+it.id+'">'+esc(amount(it,s))+'</div><div class="det" id="det-'+it.id+'">'+esc(detail(it,s))+'</div></div>'+
@@ -537,8 +607,14 @@ body:not(.trancado) #porta{display:none}
       (openId===it.id?editPanel(it):'')+'</article>';
   }
   function render(){
-    var s=S(),vis=visible();
+    var s=S(),vis=visible(),kit=K();
     ["adults","kids","babies","pets"].forEach(function(k){$(k).value=state[k];});
+    var kb=document.querySelectorAll("[data-kit]");for(var i=0;i<kb.length;i++)kb[i].setAttribute("aria-pressed",String(kb[i].dataset.kit===state.kit));
+    $("kit-nome").textContent=kit.nome;
+    $("kit-lead").textContent=kit.lead;
+    document.title="Calculadora de Estoque de Sobrevivência – "+kit.nome.charAt(0).toUpperCase()+kit.nome.slice(1)+" · Sobreviva com Francisco";
+    $("chips").innerHTML=kit.dias.map(function(d){return '<button class="chip" type="button" data-days="'+d+'" aria-pressed="'+(d===s.D)+'">'+(d===1?"1 dia":d+" dias")+'</button>';}).join("");
+    $("chips").style.gridTemplateColumns="repeat("+kit.dias.length+",1fr)";
     $("cats").innerHTML=CATS.map(function(c){
       var items=vis.filter(function(i){return i.cat===c.key;});
       if(!items.length&&c.key!=="extra")return "";
@@ -550,30 +626,26 @@ body:not(.trancado) #porta{display:none}
     update();
   }
   function update(){
-    var s=S(),vis=visible(),tot=0,falta=0,cats={};
+    var s=S(),vis=visible(),tot=0,falta=0,cats={},w=0;
     vis.forEach(function(it){
-      var c=cost(it,s);tot+=c;if(!state.have[it.id])falta+=c;
-      cats[it.cat]=cats[it.cat]||{t:0,n:0,h:0};cats[it.cat].t+=c;cats[it.cat].n++;if(state.have[it.id])cats[it.cat].h++;
+      var c=cost(it,s),hv=!!KS().have[it.id];tot+=c;if(!hv)falta+=c;if(it.agua)w+=rounded(it,s);
+      cats[it.cat]=cats[it.cat]||{t:0,n:0,h:0};cats[it.cat].t+=c;cats[it.cat].n++;if(hv)cats[it.cat].h++;
       var a=$("amt-"+it.id),d=$("det-"+it.id),m=$("cost-"+it.id),nm=$("nm-"+it.id);
       if(a)a.textContent=amount(it,s);if(d)d.textContent=detail(it,s);if(m)m.textContent=money(cost(it,s));if(nm)nm.textContent=it.name||"Item sem nome";
     });
     CATS.forEach(function(c){var el=$("ct-"+c.key);if(el){var x=cats[c.key];el.textContent=x?money(x.t)+" · "+x.h+" de "+x.n:"";}});
-    var w=2*s.P*s.D+s.B*s.D;
-    $("w-l").textContent=nf(w,0)+" L";
     var ppl=s.P+s.B;
-    $("w-t").textContent="de água para "+(ppl===1?"1 pessoa":ppl+" pessoas")+" em "+s.D+" dias. "+galoes(w);
-    $("t-k").textContent="O kit para "+s.D+" dias custa";
+    $("w-l").textContent=nf(w,0)+" L";
+    $("w-t").textContent="de água para "+(ppl===1?"1 pessoa":ppl+" pessoas")+" em "+(s.D===1?"1 dia":s.D+" dias")+". "+galoes(w);
+    $("t-k").textContent="O kit para "+(s.D===1?"1 dia":s.D+" dias")+" custa";
     $("t-all").textContent=money(tot);
     $("t-falta").textContent="Falta comprar: "+money(falta);
-    var n=vis.length,got=vis.filter(function(i){return state.have[i.id];}).length,pc=n?Math.round(got*100/n):0;
+    var n=vis.length,got=vis.filter(function(i){return KS().have[i.id];}).length,pc=n?Math.round(got*100/n):0;
     $("p-v").textContent=pc+"% pronto";$("p-bar").style.width=pc+"%";
-    $("p-t").textContent=got===n&&n?"Tudo pronto! Lembre de trocar a água e conferir as validades a cada 6 meses.":"Você já tem "+got+" de "+n+" itens. Faltam "+(n-got)+".";
-    var chips=document.querySelectorAll(".chip");
-    for(var i=0;i<chips.length;i++)chips[i].setAttribute("aria-pressed",String(+chips[i].dataset.days===state.days));
+    $("p-t").textContent=got===n&&n?"Tudo pronto! Troque a água e confira as validades a cada 6 meses.":"Você já tem "+got+" de "+n+" itens. Faltam "+(n-got)+".";
   }
   function numv(v){var n=parseFloat(String(v).replace(",","."));return isFinite(n)&&n>0?n:0;}
-  function findItem(id){for(var i=0;i<ITEMS.length;i++)if(ITEMS[i].id===id)return ITEMS[i];return null;}
-  function findCustom(id){for(var i=0;i<state.custom.length;i++)if(state.custom[i].id===id)return state.custom[i];return null;}
+  function findCustom(id){var c=KS().custom;for(var i=0;i<c.length;i++)if(c[i].id===id)return c[i];return null;}
   document.addEventListener("input",function(e){
     var el=e.target;
     if(["adults","kids","babies","pets"].indexOf(el.id)>=0){state[el.id]=Math.min(30,Math.floor(numv(el.value)));save();clearTimeout(window._t);window._t=setTimeout(render,400);return;}
@@ -581,20 +653,22 @@ body:not(.trancado) #porta{display:none}
     var id=el.dataset.id,f=el.dataset.f,c=findCustom(id);
     if(c){if(f==="name"||f==="un")c[f]=el.value;else c[f]=numv(el.value);}
     else if(f==="women"){state.women=Math.floor(numv(el.value));}
-    else{state.ov[id]=state.ov[id]||{};state.ov[id][f]=numv(el.value);}
+    else{var ov=KS().ov;ov[id]=ov[id]||{};ov[id][f]=numv(el.value);}
     save();update();
   });
   document.addEventListener("click",function(e){
     var el=e.target.closest("button");if(!el||el.closest("#porta"))return;
-    if(el.dataset.step){var k=el.dataset.step;state[k]=Math.max(0,Math.min(30,(state[k]||0)+(+el.dataset.d)));save();render();}
-    else if(el.dataset.days){state.days=+el.dataset.days;save();render();}
-    else if(el.dataset.have){var id=el.dataset.have;if(state.have[id])delete state.have[id];else state.have[id]=true;save();render();var b=document.querySelector('[data-have="'+id+'"]');if(b)b.focus();}
+    var ks=KS();
+    if(el.dataset.kit){state.kit=el.dataset.kit;openId=null;save();try{history.replaceState(null,"","#"+(state.kit==="casa"?"casa":"evacuacao"));}catch(x){}render();}
+    else if(el.dataset.step){var k=el.dataset.step;state[k]=Math.max(0,Math.min(30,(state[k]||0)+(+el.dataset.d)));save();render();}
+    else if(el.dataset.days){ks.days=+el.dataset.days;save();render();}
+    else if(el.dataset.have){var id=el.dataset.have;if(ks.have[id])delete ks.have[id];else ks.have[id]=true;save();render();var b=document.querySelector('[data-have="'+id+'"]');if(b)b.focus();}
     else if(el.dataset.open){openId=openId===el.dataset.open?null:el.dataset.open;render();var p=document.querySelector("#card-"+openId+" .edit input");if(p)p.focus();}
     else if(el.dataset.close){openId=null;render();}
-    else if(el.dataset.undo){delete state.ov[el.dataset.undo];if(el.dataset.undo==="absorvente")state.women=null;save();render();}
-    else if(el.dataset.add){var nid="c"+Date.now();state.custom.push({id:nid,name:"",q:1,un:"",p:0});openId=nid;save();render();var nm=$("i-"+nid+"-name");if(nm)nm.focus();}
-    else if(el.dataset.del){var d=el.dataset.del;state.custom=state.custom.filter(function(c){return c.id!==d;});delete state.have[d];openId=null;save();render();}
-    else if(el.id==="reset"){if(confirmReset){state=fresh();openId=null;save();render();say("Pronto, a lista voltou ao começo.");confirmReset=false;el.textContent="Começar de novo";}else{confirmReset=true;el.textContent="Toque de novo para apagar tudo que marcou e mudou";setTimeout(function(){confirmReset=false;el.textContent="Começar de novo";},5000);}}
+    else if(el.dataset.undo){delete ks.ov[el.dataset.undo];if(el.dataset.undo==="absorvente")state.women=null;openId=null;save();render();}
+    else if(el.dataset.add){var nid="c"+Date.now();ks.custom.push({id:nid,name:"",q:1,un:"",p:0});openId=nid;save();render();var nm=$("i-"+nid+"-name");if(nm)nm.focus();}
+    else if(el.dataset.del){var d=el.dataset.del;ks.custom=ks.custom.filter(function(c){return c.id!==d;});delete ks.have[d];openId=null;save();render();}
+    else if(el.id==="reset"){if(confirmReset){state.kits[state.kit]=freshKit(state.kit);openId=null;save();render();say("Pronto, este kit voltou ao começo.");confirmReset=false;el.textContent="Começar este kit de novo";}else{confirmReset=true;el.textContent="Toque de novo para apagar o que marcou e mudou neste kit";setTimeout(function(){confirmReset=false;el.textContent="Começar este kit de novo";},5000);}}
     else if(el.id==="pdf"){makePdf();}
   });
   var confirmReset=false;
@@ -658,11 +732,11 @@ body:not(.trancado) #porta{display:none}
     var L=14,R=196,y=18;
     function room(h){if(y+h>282){doc.addPage();y=18;}}
     doc.text("SOBREVIVA COM FRANCISCO",L,y,{size:8,bold:true,gray:0.4});y+=7;
-    doc.text("Kit de sobrevivência da família",L,y,{size:18,bold:true});y+=7;
+    doc.text("Calculadora de estoque de sobrevivência",L,y,{size:16,bold:true});y+=7;doc.text("Kit "+K().nome,L,y,{size:13,bold:true,gray:0.3});y+=6;
     var quem=[state.adults+(state.adults===1?" adulto":" adultos"),state.kids+(state.kids===1?" criança":" crianças")];
     if(state.babies)quem.push(state.babies+(state.babies===1?" bebê":" bebês"));
     if(state.pets)quem.push(state.pets+(state.pets===1?" animal":" animais"));
-    doc.text(quem.join(", ")+"  |  para "+s.D+" dias  |  "+new Date().toLocaleDateString("pt-BR"),L,y,{size:10,gray:0.3});y+=10;
+    doc.text(quem.join(", ")+"  |  para "+(s.D===1?"1 dia":s.D+" dias")+"  |  "+new Date().toLocaleDateString("pt-BR"),L,y,{size:10,gray:0.3});y+=10;
     CATS.forEach(function(c){
       var items=vis.filter(function(i){return i.cat===c.key;});
       if(!items.length)return;
@@ -673,7 +747,7 @@ body:not(.trancado) #porta{display:none}
         var det=detail(it,s),lines=det?wrap(det,140,8):[];
         room(6+lines.length*3.6);
         doc.box(L,y-3.4,4);
-        if(state.have[it.id])doc.text("X",L+0.9,y,{size:9,bold:true});
+        if(KS().have[it.id])doc.text("X",L+0.9,y,{size:9,bold:true});
         doc.text(fit(it.name||"Item sem nome",80,10),L+7,y,{size:10,bold:true});
         doc.text(fit(amount(it,s),40,10),160,y,{size:10,bold:true,right:true});
         doc.text(money(cost(it,s)),R,y,{size:10,right:true});
@@ -683,7 +757,7 @@ body:not(.trancado) #porta{display:none}
       });
       y+=3;
     });
-    var tot=0,falta=0;vis.forEach(function(i){var c=cost(i,s);tot+=c;if(!state.have[i.id])falta+=c;});
+    var tot=0,falta=0;vis.forEach(function(i){var c=cost(i,s);tot+=c;if(!KS().have[i.id])falta+=c;});
     room(34);
     doc.line(L,y,R);y+=7;
     doc.text("O kit custa",L,y,{size:12,bold:true});doc.text(money(tot),R,y,{size:12,bold:true,right:true});y+=6.5;
@@ -698,7 +772,7 @@ body:not(.trancado) #porta{display:none}
     var btn=$("pdf");btn.disabled=true;say("Preparando o PDF…");
     var blob;
     try{blob=buildPdf();}catch(e){btn.disabled=false;say("Erro ao montar o PDF.");return;}
-    var fname="kit-de-sobrevivencia.pdf",file=null;
+    var fname=state.kit==="casa"?"kit-ficando-em-casa.pdf":"kit-evacuacao-rapida.pdf",file=null;
     try{file=new File([blob],fname,{type:"application/pdf"});}catch(e){}
     var touch=window.matchMedia&&window.matchMedia("(pointer:coarse)").matches;
     if(touch&&file&&navigator.canShare&&navigator.canShare({files:[file]})){
