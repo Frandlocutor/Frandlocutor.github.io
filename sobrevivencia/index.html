@@ -273,9 +273,15 @@ body:not(.trancado) #porta{display:none}
   </a>
 
   <details>
+    <summary>De onde vêm os preços</summary>
+    <p>Preços pesquisados em 23/11/2026. Os itens sem pesquisa recente levam um preço aproximado; ao tocar em "Mudar", o item mostra qual é o caso. Os preços mudam de uma loja para outra, então confira onde você compra.</p>
+    <ul id="fontes"></ul>
+  </details>
+
+  <details>
     <summary>De onde vem esta lista</summary>
     <p>Os itens seguem a orientação da Defesa Civil (Defesa Civil Nacional e <a href="https://www.defesacivil.pr.gov.br/">Defesa Civil do Paraná</a>) para o kit de emergência: água, alimentos, primeiros socorros e remédios, documentos, dinheiro, iluminação, comunicação, roupas, higiene e ferramentas. O kit "ficando em casa" é para passar vários dias sem sair; o kit "evacuação rápida" é a mochila para sair em minutos, com o que dá para carregar por até 3 dias (72 horas). Os dois kits guardam as marcações separadas.</p>
-    <p>A água segue a referência de 2 litros por pessoa por dia. As outras quantidades são médias aproximadas, e os preços são valores aproximados de novembro de 2026. Os preços mudam de um lugar para outro: toque em "Mudar" para colocar o que você paga. Roupas, agasalho e calçado começam sem preço, porque quase todo mundo já tem.</p>
+    <p>A água segue a referência de 2 litros por pessoa por dia. As outras quantidades são médias aproximadas, para você ajustar ao seu caso. Toque em "Mudar" para colocar o que você paga. Roupas, agasalho e calçado começam sem preço, porque quase todo mundo já tem.</p>
     <ul>
       <li>Troque a água e confira a validade dos alimentos e remédios a cada 6 meses.</li>
       <li>Guarde pilhas fora da lanterna e do rádio, e documentos e fósforos em saco plástico fechado.</li>
@@ -459,6 +465,37 @@ body:not(.trancado) #porta{display:none}
       ]
     }
   };
+  // ---------- preços pesquisados (23/11/2026) ----------
+  var FONTES={
+    bh:["Pesquisa em supermercados de Belo Horizonte, nov/2026 (arroz, feijão), em Metrópoles","https://www.metropoles.com/minas-gerais/preco-da-comida-varia-ate-162-dependendo-do-supermercado-em-bh"],
+    dieese:["DIEESE, cesta básica de São Paulo, set/2026 (café, açúcar), compilado por TripleTrad","https://www.tripletrad.com.br/cesta-basica/"],
+    procpe:["Procon-PE, Grande Recife, out/2026 (sabonete, creme dental, papel higiênico, água sanitária), em Folha de Pernambuco","https://www.folhape.com.br/economia/cesta-basica-outubro-procon/523216/"],
+    maceio:["Procon Maceió, ago/2026 (óleo de soja)","https://maceio.al.gov.br/noticias/segov/procon-maceio-amplia-pesquisa-da-cesta-basica-na-capital-alagoana"],
+    tl:["Procon Três Lagoas, mai/2026 (detergente)","https://grupoportaldenoticias.com.br/procon-tl-divulga-pesquisa-da-cesta-basica-com-variacao-de-precos"],
+    tlbebe:["Procon Três Lagoas (fórmula infantil, lata de 800 g: média entre R$ 58,99 e R$ 97,79)","https://treslagoas.ms.gov.br/atencao-papais-procon-tl-divulga-pesquisa-sobre-o-preco-das-fraldas-descartaveis-e-formula-em-po"],
+    cg:["Procon Campina Grande, 2026 (galão de água de 20 L)","https://campinagrande.pb.gov.br/pesquisa-mensal-do-procon-cg-revela-variacoes-de-ate-875-na-agua-mineral-e-mais-de-15-no-gas-de-cozinha/"],
+    spbisc:["Procon-SP/DIEESE, cesta básica de São Paulo, out/2026 (biscoito água e sal, pacote de 200 g)","https://www.procon.sp.gov.br/wp-content/uploads/2026/11/CB-outubro-2026-com-comparativo-anual.pdf"],
+    spleite:["Procon-SP/DIEESE, cesta básica de São Paulo, mar/2026 (pacote de leite em pó, considerado de 400 g)","https://www.procon.sp.gov.br/wp-content/uploads/2026/05/CB032026comparativoanual.pdf"],
+    sprep:["Procon-SP, pesquisa de repelentes, fev/2025 (Off Active 170 ml)","https://www.procon.sp.gov.br/um-dos-produtos-que-podem-ajudar-a-proteger-contra-a-dengue-repelentes-tem-ligeira-queda-no-preco-medio-na-capital-mas-as-diferencas-entre-estabelecimentos-podem-passar-de-100/"],
+    go:["Procon Goiás, pesquisa de higiene e limpeza (álcool em gel 420 g: entre R$ 12,99 e R$ 16,79)","https://goias.gov.br/procon/?p=56926"],
+    midiamax:["Jornal Midiamax, kit de 72 horas em Campo Grande, nov/2026 (lanterna, rádio, power bank, kit de primeiros socorros, abridor, fósforos)","https://midiamax.com.br/cotidiano/2026/ja-preparou-seu-kit-sobrevivencia-72h-custa-mais-r-500-campo-grande/"],
+    magalu:["Magazine Luiza, preços no site em 23/11/2026 (sardinha 125 g, fogareiro, cartucho de gás 227 g, pilhas AA cartela com 4, apito, fraldas Pampers M 40 un.)","https://www.magazineluiza.com.br/"],
+    ml:["Mercado Livre, 23/11/2026 (Clorin, kit com 10 pastilhas)","https://mercadolivre.com.br/sec/282SqZ2"],
+    cobasi:["Cobasi, 23/11/2026 (ração Allcanis 15 kg)","https://www.cobasi.com.br/racao-para-caes-adultos-allcanis-premium-frango-carne-e-arroz-3925551/p"],
+    centauro:["Centauro, 23/11/2026 (capa de chuva Nord)","https://www.centauro.com.br/nav/categorias/acessorios/esportes/camping"]
+  };
+  var PRECOS={
+    agua:[0.75,"cg"],aguauso:[0.75,"cg"],aguapet:[0.75,"cg"],sanit:[2.38,"procpe"],
+    arroz:[4.50,"bh"],feijao:[8.40,"bh"],lata:[7.89,"magalu"],leitepo:[41.68,"spleite"],oleo:[7.76,"maceio"],
+    acucar:[3.64,"dieese"],cafe:[57.98,"dieese"],biscoito:[3.12,"spbisc"],abridor:[5.99,"midiamax"],
+    fogareiro:[101.64,"magalu"],cartucho:[14.88,"magalu"],socorros:[15.99,"midiamax"],alcool:[14.89,"go"],
+    lanterna:[32.99,"midiamax"],pilhas:[2.06,"magalu"],powerbank:[151.00,"midiamax"],radio:[38.65,"midiamax"],
+    pasta:[3.25,"procpe"],sabonete:[2.42,"procpe"],papel:[1.30,"procpe"],deterg:[2.89,"tl"],fogo:[3.95,"midiamax"],
+    fralda:[0.97,"magalu"],leite:[97.99,"tlbebe"],racao:[9.23,"cobasi"],
+    pastilha:[1.99,"ml"],repelente:[32.97,"sprep"],apito:[4.95,"magalu"],capa:[37.99,"centauro"]
+  };
+  ["casa","evac"].forEach(function(k){KITS[k].items.forEach(function(it){var x=PRECOS[it.id];if(x&&!(k==="evac"&&it.id==="agua")){it.p=x[0];it.f=x[1];}});});
+  KITS.evac.items.forEach(function(it){if(it.id==="agua")it.det="em garrafas fáceis de carregar (garrafa custa mais que galão: preço aproximado)";});
   var KEY="kit-sobrevivencia-v2";
   function freshKit(id){return {days:KITS[id].padrao,have:{},ov:{},custom:[]};}
   function fresh(){return {adults:2,kids:2,babies:0,pets:0,women:null,kit:"casa",kits:{casa:freshKit("casa"),evac:freshKit("evac")}};}
@@ -592,7 +629,8 @@ body:not(.trancado) #porta{display:none}
       if(it.k!=="txt")h+=field(it,"n",ruleLabel(it),N(it));
       if(it.k==="wd")h+=field(it,"women","Quantas mulheres menstruam",women());
       h+=field(it,"p",priceLabel(it),PR(it));
-      h+='<div class="note">'+(it.k==="txt"?"Escreva quanto pretende gastar com este item.":"Quantidade e preço são aproximados. Se o seu caso é outro, escreva aqui.")+'</div>';
+      var fo=it.f&&FONTES[it.f];
+      h+='<div class="note">'+(it.k==="txt"?"Escreva quanto pretende gastar com este item.":(fo?'Preço pesquisado: <a href="'+fo[1]+'" target="_blank" rel="noopener">'+esc(fo[0])+'</a>. ':"Preço aproximado (sem pesquisa recente). ")+"A quantidade é uma média. Se o seu caso é outro, escreva aqui.")+'</div>';
     }
     h+='<div class="edit-btns"><button class="btn" type="button" data-close="1">Pronto</button>'+
       (it.custom?'<button class="btn ghost" type="button" data-del="'+it.id+'">Tirar da lista</button>':'<button class="btn ghost" type="button" data-undo="'+it.id+'">Voltar ao original</button>')+'</div></div>';
@@ -673,6 +711,7 @@ body:not(.trancado) #porta{display:none}
   });
   var confirmReset=false;
   function say(t){$("msg").textContent=t;}
+  (function(){var ul=$("fontes");if(!ul)return;var h="";for(var k in FONTES){h+='<li><a href="'+FONTES[k][1]+'" target="_blank" rel="noopener">'+esc(FONTES[k][0])+'</a></li>';}ul.innerHTML=h;})();
 
   // ---------- PDF (gerado no próprio celular, sem internet) ----------
   var HW=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
@@ -762,7 +801,7 @@ body:not(.trancado) #porta{display:none}
     doc.line(L,y,R);y+=7;
     doc.text("O kit custa",L,y,{size:12,bold:true});doc.text(money(tot),R,y,{size:12,bold:true,right:true});y+=6.5;
     doc.text("Falta comprar (itens sem X)",L,y,{size:12,bold:true});doc.text(money(falta),R,y,{size:12,bold:true,right:true});y+=7;
-    doc.text("Preços aproximados de novembro de 2026 ou informados por você. Confira no seu mercado.",L,y,{size:8.5,gray:0.3});y+=4.5;
+    doc.text("Preços pesquisados em 23/11/2026 (fontes no aplicativo), aproximados ou informados por você. Confira onde você compra.",L,y,{size:8.5,gray:0.3});y+=4.5;
     doc.text("Troque a água e confira a validade dos alimentos e remédios a cada 6 meses.",L,y,{size:8.5,gray:0.3});y+=4.5;
     doc.text("Guarde a mochila perto da porta. Pilhas fora dos aparelhos; documentos e fósforos em saco plástico.",L,y,{size:8.5,gray:0.3});y+=6;
     doc.text("Mais dicas no canal Sobreviva com Francisco: youtube.com/@FranciscoRamoslocutor",L,y,{size:8.5,bold:true,gray:0.25});
